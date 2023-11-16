@@ -1,5 +1,6 @@
 import mimetypes
 import urllib.parse
+from threading import Thread
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 
@@ -49,7 +50,8 @@ def run_server():
     address = ('localhost', 8080)
     http_server = HTTPServer(address, MyFramework)
     try:
-        http_server.serve_forever()
+        server = Thread(target=http_server.serve_forever())
+        server.start()
     except KeyboardInterrupt:
         http_server.server_close()
 
