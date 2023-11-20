@@ -1,11 +1,19 @@
+import json
 import mimetypes
 import urllib.parse
+import logging
+import socket
 from threading import Thread
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 
 
 BASE_DIR = Path()
+BUFFER_SIZE = 1024
+HTTP_HOST = 'localhost'
+HTTP_PORT = 8080
+SOCKET_HOST = 'localhost'
+SOCKET_PORT = 4000
 
 
 class MyFramework(BaseHTTPRequestHandler):
@@ -25,7 +33,13 @@ class MyFramework(BaseHTTPRequestHandler):
                     self.send_html('error.html', status_code=404)
 
     def do_POST(self):
-        pass
+        size = self.headers.get('Content-Length')
+        data = self.rfile.read(int(size))
+        print(data)
+
+        self.send_response(302)
+        self.send_header('Location', '/')
+        self.end_headers()
 
     def send_html(self, filename, status_code=200):
         self.send_response(status_code)
@@ -46,13 +60,44 @@ class MyFramework(BaseHTTPRequestHandler):
             self.wfile.write(file.read())
 
 
-def run_server():
-    address = ('localhost', 8080)
+def save_data_from_form(data):
+    pars_data = urllib.parse.unquote_plus(data.decode())
+    print(pars_data)
+    try:
+        parse_dict = {key: value for key, value in [el.split('=') for el in pars_data.split('&')]}
+        print(parse_dict)
+        with open('storage/data_old.json', 'w', encoding='utf-8') as file:
+            json.dump(parse_dict, file, ensure_ascii=False, indent=4)
+    except ValueError as err:
+        logging.error(err)
+    except OSError as err:
+        logging.error(err)
+
+
+def run_socket_server(host, port):
+    server_socket = socket.socket()
+    server_socket.bind((host, port))
+    # server_socket.listen()
+    logging.info('Starting socket server')
+    try:
+        while True:
+            msg, address = server_socket.recvfrom(BUFFER_SIZE)
+            save_data_from_form(msg)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server_socket.server_close()
+
+
+def run_http_server(host, port):
+    address = (host, port)
     http_server = HTTPServer(address, MyFramework)
     try:
-        server = Thread(target=http_server.serve_forever())
-        server.start()
+        logging.info('Starting http server')
+        http_server.serve_forever()
     except KeyboardInterrupt:
+        pass
+    finally:
         http_server.server_close()
 
 
