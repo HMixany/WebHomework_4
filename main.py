@@ -18,7 +18,7 @@ SOCKET_PORT = 4000
 
 class MyFramework(BaseHTTPRequestHandler):
     def do_GET(self):
-        print(urllib.parse.urlparse(self.path))
+        # print(urllib.parse.urlparse(self.path))
         route = urllib.parse.urlparse(self.path)
         match route.path:
             case "/":
@@ -35,8 +35,10 @@ class MyFramework(BaseHTTPRequestHandler):
     def do_POST(self):
         size = self.headers.get('Content-Length')
         data = self.rfile.read(int(size))
-        print(data)
-
+        # print(data)
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        client_socket.sendto(data, (SOCKET_HOST, SOCKET_PORT))
+        client_socket.close()
         self.send_response(302)
         self.send_header('Location', '/')
         self.end_headers()
@@ -62,10 +64,10 @@ class MyFramework(BaseHTTPRequestHandler):
 
 def save_data_from_form(data):
     pars_data = urllib.parse.unquote_plus(data.decode())
-    print(pars_data)
+    # print(pars_data)
     try:
         parse_dict = {key: value for key, value in [el.split('=') for el in pars_data.split('&')]}
-        print(parse_dict)
+        # print(parse_dict)
         with open('storage/data_old.json', 'w', encoding='utf-8') as file:
             json.dump(parse_dict, file, ensure_ascii=False, indent=4)
     except ValueError as err:
@@ -75,18 +77,19 @@ def save_data_from_form(data):
 
 
 def run_socket_server(host, port):
-    server_socket = socket.socket()
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_socket.bind((host, port))
     # server_socket.listen()
     logging.info('Starting socket server')
     try:
         while True:
             msg, address = server_socket.recvfrom(BUFFER_SIZE)
+            logging.info(f'{address}: {msg}')
             save_data_from_form(msg)
     except KeyboardInterrupt:
         pass
     finally:
-        server_socket.server_close()
+        server_socket.close()
 
 
 def run_http_server(host, port):
@@ -102,4 +105,9 @@ def run_http_server(host, port):
 
 
 if __name__ == '__main__':
-    run_server()
+    logging.basicConfig(level=logging.DEBUG, format='%(threadName)s %(message)s')
+
+    server = Thread(target=run_http_server, args=(HTTP_HOST, HTTP_PORT))
+    server.start()
+    server_socket = Thread(target=run_socket_server, args=(SOCKET_HOST, SOCKET_PORT))
+    server_socket.start()
