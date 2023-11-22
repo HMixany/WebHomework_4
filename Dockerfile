@@ -20,8 +20,8 @@ COPY . .
 
 
 # Позначимо порт, де працює застосунок всередині контейнера
-# EXPOSE 5000
+# EXPOSE 3000
 
 # Запустимо наш застосунок всередині контейнера
-# CMD Xvfb :99 -ac -screen 0 1024x768x16 & python main.py
-CMD ["tail", "-f", "/dev/null"]
+
+CMD ["python", "main.py"]

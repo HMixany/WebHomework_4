@@ -6,14 +6,14 @@ import socket
 from threading import Thread
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
-
+from datetime import datetime
 
 BASE_DIR = Path()
 BUFFER_SIZE = 1024
-HTTP_HOST = 'localhost'
-HTTP_PORT = 8080
+HTTP_HOST = '0.0.0.0'
+HTTP_PORT = 3000
 SOCKET_HOST = 'localhost'
-SOCKET_PORT = 4000
+SOCKET_PORT = 5000
 
 
 class MyFramework(BaseHTTPRequestHandler):
@@ -67,9 +67,18 @@ def save_data_from_form(data):
     # print(pars_data)
     try:
         parse_dict = {key: value for key, value in [el.split('=') for el in pars_data.split('&')]}
-        # print(parse_dict)
-        with open('storage/data_old.json', 'w', encoding='utf-8') as file:
-            json.dump(parse_dict, file, ensure_ascii=False, indent=4)
+        logging.info(f'{parse_dict}')
+        existing_dict = {}
+        if Path('storage/data.json').is_file():
+            with open('storage/data.json', 'r', encoding='utf-8') as fh:
+                existing_dict = json.load(fh)
+                logging.info(f'{existing_dict}')
+
+        key = str(datetime.now())
+        existing_dict[key] = parse_dict
+
+        with open('storage/data.json', 'w', encoding='utf-8') as file:
+            json.dump(existing_dict, file, ensure_ascii=False, indent=4)
     except ValueError as err:
         logging.error(err)
     except OSError as err:
@@ -84,7 +93,7 @@ def run_socket_server(host, port):
     try:
         while True:
             msg, address = server_socket.recvfrom(BUFFER_SIZE)
-            logging.info(f'{address}: {msg}')
+            logging.info(f'Socket received {address}: {msg}')
             save_data_from_form(msg)
     except KeyboardInterrupt:
         pass
